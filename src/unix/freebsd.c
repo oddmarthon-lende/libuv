@@ -261,7 +261,7 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return uv__new_sys_error(ENOMEM);
   }
 
-  if (sysctlbyname("kern.cp_times", &cp_times, &size, NULL, 0) < 0) {
+  if (sysctlbyname("kern.cp_times", cp_times, &size, NULL, 0) < 0) {
     free(cp_times);
     free(*cpu_infos);
     return uv__new_sys_error(errno);
@@ -276,7 +276,7 @@ uv_err_t uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpu_info->cpu_times.idle = (uint64_t)(cp_times[CP_IDLE+cur]) * multiplier;
     cpu_info->cpu_times.irq = (uint64_t)(cp_times[CP_INTR+cur]) * multiplier;
 
-    cpu_info->model = strdup(model);
+    cpu_info->model = strdup((const char *)&model);
     cpu_info->speed = cpuspeed;
 
     cur+=CPUSTATES;
