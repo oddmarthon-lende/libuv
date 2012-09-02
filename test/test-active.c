@@ -21,29 +21,62 @@
 
 #include "uv.h"
 #include "task.h"
-#include <string.h>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 
-static void set_title(const char* title) {
-  char buffer[512];
-  uv_err_t err;
+static int close_cb_called = 0;
 
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
 
-  err = uv_set_process_title(title);
-  ASSERT(UV_OK == err.code);
-
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
-
-  ASSERT(strcmp(buffer, title) == 0);
+static void close_cb(uv_handle_t* handle) {
+  ASSERT(handle != NULL);
+  close_cb_called++;
 }
 
 
-TEST_IMPL(process_title) {
-  /* Check for format string vulnerabilities. */
-  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
-  set_title("new title");
+static void timer_cb(uv_timer_t* handle, int status) {
+  ASSERT(0 && "timer_cb should not have been called");
+}
+
+
+TEST_IMPL(active) {
+  int r;
+  uv_timer_t timer;
+
+  r = uv_timer_init(uv_default_loop(), &timer);
+  ASSERT(r == 0);
+
+  ASSERT(!uv_is_active((uv_handle_t*) &timer));
+  ASSERT(!uv_is_closing((uv_handle_t*) &timer));
+
+  r = uv_timer_start(&timer, timer_cb, 1000, 0);
+  ASSERT(r == 0);
+
+  ASSERT(uv_is_active((uv_handle_t*) &timer));
+  ASSERT(!uv_is_closing((uv_handle_t*) &timer));
+
+  r = uv_timer_stop(&timer);
+  ASSERT(r == 0);
+
+  ASSERT(!uv_is_active((uv_handle_t*) &timer));
+  ASSERT(!uv_is_closing((uv_handle_t*) &timer));
+
+  r = uv_timer_start(&timer, timer_cb, 1000, 0);
+  ASSERT(r == 0);
+
+  ASSERT(uv_is_active((uv_handle_t*) &timer));
+  ASSERT(!uv_is_closing((uv_handle_t*) &timer));
+
+  uv_close((uv_handle_t*) &timer, close_cb);
+
+  ASSERT(!uv_is_active((uv_handle_t*) &timer));
+  ASSERT(uv_is_closing((uv_handle_t*) &timer));
+
+  r = uv_run(uv_default_loop());
+  ASSERT(r == 0);
+
+  ASSERT(close_cb_called == 1);
+
   return 0;
 }

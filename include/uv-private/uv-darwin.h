@@ -19,31 +19,22 @@
  * IN THE SOFTWARE.
  */
 
-#include "uv.h"
-#include "task.h"
-#include <string.h>
+#ifndef UV_DARWIN_H
+#define UV_DARWIN_H
 
+#if defined(__APPLE__) && defined(__MACH__)
+# include <mach/mach.h>
+# include <mach/task.h>
+# include <mach/semaphore.h>
+# define UV_PLATFORM_SEM_T semaphore_t
+#endif
 
-static void set_title(const char* title) {
-  char buffer[512];
-  uv_err_t err;
+#define UV_PLATFORM_FS_EVENT_FIELDS                                           \
+  ev_io event_watcher;                                                        \
+  int fflags;                                                                 \
+  int fd;                                                                     \
 
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
+#define UV_STREAM_PRIVATE_PLATFORM_FIELDS                                     \
+  void* select;                                                               \
 
-  err = uv_set_process_title(title);
-  ASSERT(UV_OK == err.code);
-
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
-
-  ASSERT(strcmp(buffer, title) == 0);
-}
-
-
-TEST_IMPL(process_title) {
-  /* Check for format string vulnerabilities. */
-  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
-  set_title("new title");
-  return 0;
-}
+#endif /* UV_DARWIN_H */

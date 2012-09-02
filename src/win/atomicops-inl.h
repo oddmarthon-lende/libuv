@@ -19,31 +19,38 @@
  * IN THE SOFTWARE.
  */
 
+#ifndef UV_WIN_ATOMICOPS_INL_H_
+#define UV_WIN_ATOMICOPS_INL_H_
+
 #include "uv.h"
-#include "task.h"
-#include <string.h>
 
 
-static void set_title(const char* title) {
-  char buffer[512];
-  uv_err_t err;
+/* Atomic set operation on char */
+#ifdef _MSC_VER /* MSVC */
 
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
+/* _InterlockedOr8 is supported by MSVC on x32 and x64. It is  slightly less */
+/* efficient than InterlockedExchange, but InterlockedExchange8 does not */
+/* exist, and interlocked operations on larger targets might require the */
+/* target to be aligned. */
+#pragma intrinsic(_InterlockedOr8)
 
-  err = uv_set_process_title(title);
-  ASSERT(UV_OK == err.code);
-
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
-
-  ASSERT(strcmp(buffer, title) == 0);
+static char __declspec(inline) uv__atomic_exchange_set(char volatile* target) {
+  return _InterlockedOr8(target, 1);
 }
 
+#else /* GCC */
 
-TEST_IMPL(process_title) {
-  /* Check for format string vulnerabilities. */
-  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
-  set_title("new title");
-  return 0;
+/* Mingw-32 version, hopefully this works for 64-bit gcc as well. */
+static inline char uv__atomic_exchange_set(char volatile* target) {
+  const char one = 1;
+  char old_value;
+  __asm__ __volatile__ ("lock xchgb %0, %1\n\t"
+                        : "=r"(old_value), "=m"(*target)
+                        : "0"(one), "m"(*target)
+                        : "memory");
+  return old_value;
 }
+
+#endif
+
+#endif /* UV_WIN_ATOMICOPS_INL_H_ */

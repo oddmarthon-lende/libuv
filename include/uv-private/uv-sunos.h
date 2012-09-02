@@ -19,31 +19,22 @@
  * IN THE SOFTWARE.
  */
 
-#include "uv.h"
-#include "task.h"
-#include <string.h>
+#ifndef UV_SUNOS_H
+#define UV_SUNOS_H
 
+#include <sys/port.h>
+#include <port.h>
 
-static void set_title(const char* title) {
-  char buffer[512];
-  uv_err_t err;
+#if defined(PORT_SOURCE_FILE)
 
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
+# define UV_PLATFORM_LOOP_FIELDS                                              \
+  uv__io_t fs_event_watcher;                                                  \
+  int fs_fd;                                                                  \
 
-  err = uv_set_process_title(title);
-  ASSERT(UV_OK == err.code);
+# define UV_PLATFORM_FS_EVENT_FIELDS                                          \
+  file_obj_t fo;                                                              \
+  int fd;                                                                     \
 
-  err = uv_get_process_title(buffer, sizeof(buffer));
-  ASSERT(UV_OK == err.code);
+#endif /* defined(PORT_SOURCE_FILE) */
 
-  ASSERT(strcmp(buffer, title) == 0);
-}
-
-
-TEST_IMPL(process_title) {
-  /* Check for format string vulnerabilities. */
-  set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
-  set_title("new title");
-  return 0;
-}
+#endif /* UV_SUNOS_H */
